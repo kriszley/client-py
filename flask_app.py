@@ -11,7 +11,6 @@ from flask import Flask, request, redirect, session
 smart_defaults = {
     'app_id': 'my_web_app',
     'api_base': 'http://localhost:8080/fhir/',
-    'redirect_uri': 'http://localhost:8000/fhir-app/',
 }
 
 app = Flask(__name__)
@@ -72,28 +71,27 @@ def _get_med_name(prescription, client=None):
 def index():
     """ The app's main page.
     """
-    smart = _get_smart()
-    body = "<h1>Hello</h1>"
-    
-    if smart.ready and smart.patient is not None:       # "ready" may be true but the access token may have expired, making smart.patient = None
-        name = smart.human_name(smart.patient.name[0] if smart.patient.name and len(smart.patient.name) > 0 else 'Unknown')
-        
-        # generate simple body text
-        body += "<p>You are authorized and ready to make API requests for <em>{0}</em>.</p>".format(name)
-        pres = _get_prescriptions(smart)
-        if pres is not None:
-            body += "<p>{0} prescriptions: <ul><li>{1}</li></ul></p>".format("His" if 'male' == smart.patient.gender else "Her", '</li><li>'.join([_get_med_name(p,smart) for p in pres]))
-        else:
-            body += "<p>(There are no prescriptions for {0})</p>".format("him" if 'male' == smart.patient.gender else "her")
-        body += """<p><a href="/logout">Change patient</a></p>"""
-    else:
-        auth_url = smart.authorize_url
-        if auth_url is not None:
-            body += """<p>Please <a href="{0}">authorize</a>.</p>""".format(auth_url)
-        else:
-            body += """<p>Running against a no-auth server, nothing to demo here. """
-        body += """<p><a href="/reset" style="font-size:small;">Reset</a></p>"""
-    return body
+    from fhirclient import client
+    settings = {
+        'app_id': 'my_web_app',
+        'api_base': 'http://localhost:8080/fhir/',
+    }
+    smart = client.FHIRClient(settings=settings)
+
+    import fhirclient.models.patient as p
+    search = p.Patient.where(struct={'_id': '1'})
+    print("Searched: ")
+    print(search)
+    patients = search.perform_resources(smart.server)
+    print("patients : ")
+    print(patients)
+    for patient in patients:
+        patient.as_json()
+        print(patient.as_json())
+    print(patient)
+    # '1963-06-12'
+    print(smart.human_name(patient.name[0]))
+    # 'Christy Ebert'
 
 
 @app.route('/fhir-app/')
