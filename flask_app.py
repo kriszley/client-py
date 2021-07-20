@@ -10,7 +10,7 @@ from flask import Flask, request, redirect, session
 # app setup
 smart_defaults = {
     'app_id': 'my_web_app',
-    'api_base': 'http://localhost:4004/hapi-fhir-jpaserver/fhir/',
+    'api_base': 'http://localhost:8080/fhir/',
     'redirect_uri': 'http://localhost:8000/fhir-app/',
 }
 
