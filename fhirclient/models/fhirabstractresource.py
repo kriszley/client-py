@@ -119,6 +119,7 @@ class FHIRAbstractResource(fhirabstractbase.FHIRAbstractBase):
         :returns: None or the response JSON on success
         """
         srv = server or self.origin_server
+        print(f"AUTH SRV : {srv.auth.access_token}")
         if srv is None:
             raise Exception("Cannot create a resource without a server")
         if self.id:

@@ -165,7 +165,7 @@ class FHIROAuth2Auth(FHIRAuth):
         """ Returns updated HTTP request headers, if possible, raises if there
         is no access_token.
         """
-        if not self.can_sign_headers():
+        if not self.can_sign_headers(self):
             raise Exception("Cannot sign headers since I have no access token")
         
         if headers is None:
@@ -351,6 +351,8 @@ class FHIROAuth2Auth(FHIRAuth):
     def from_state(self, state):
         """ Update ivars from given state information.
         """
+        print("HERE")
+        print(state)
         super(FHIROAuth2Auth, self).from_state(state)
         self.aud = state.get('aud') or self.aud
         self._registration_uri = state.get('registration_uri') or self._registration_uri
@@ -362,6 +364,10 @@ class FHIROAuth2Auth(FHIRAuth):
         
         self.access_token = state.get('access_token') or self.access_token
         self.refresh_token = state.get('refresh_token') or self.refresh_token
+    
+    def set_auth_tokens(self, access_token, refresh_token):
+        self.access_token = access_token
+        self.refresh_token = refresh_token
     
 
     # MARK: Utilities    
