@@ -65,6 +65,9 @@ class FHIRServer(object):
     def should_save_state(self):
         if self.client is not None:
             self.client.save_state()
+
+    def set_auth(self, auth):
+        self.auth = auth
     
     
     # MARK: Server CapabilityStatement
@@ -187,8 +190,8 @@ class FHIRServer(object):
         header_defaults.update(headers)
         # use the merged headers in the request
         headers = header_defaults
-        if not nosign and self.auth is not None and self.auth.can_sign_headers():
-            headers = self.auth.signed_headers(headers)
+        if not nosign and self.auth is not None and self.auth.can_sign_headers(self.auth):
+            headers = self.auth.signed_headers(self.auth, headers)
         
         # perform the request but intercept 401 responses, raising our own Exception
         res = self.session.get(url, headers=headers)
@@ -211,8 +214,8 @@ class FHIRServer(object):
             'Accept': FHIRJSONMimeType,
             'Accept-Charset': 'UTF-8',
         }
-        if not nosign and self.auth is not None and self.auth.can_sign_headers():
-            headers = self.auth.signed_headers(headers)
+        if not nosign and self.auth is not None and self.auth.can_sign_headers(self.auth):
+            headers = self.auth.signed_headers(self.auth, headers)
         
         # perform the request but intercept 401 responses, raising our own Exception
         res = self.session.put(url, headers=headers, data=json.dumps(resource_json))
@@ -235,8 +238,11 @@ class FHIRServer(object):
             'Accept': FHIRJSONMimeType,
             'Accept-Charset': 'UTF-8',
         }
-        if not nosign and self.auth is not None and self.auth.can_sign_headers():
-            headers = self.auth.signed_headers(headers)
+        print("Access token obj : " + str(self.auth.access_token) )
+        if not nosign and self.auth is not None and self.auth.can_sign_headers(self.auth):
+            headers = self.auth.signed_headers(self.auth, headers)
+        
+        print("HEADERS : " + str(headers) )
         
         # perform the request but intercept 401 responses, raising our own Exception
         res = self.session.post(url, headers=headers, data=json.dumps(resource_json))
@@ -272,8 +278,8 @@ class FHIRServer(object):
             'Accept': FHIRJSONMimeType,
             'Accept-Charset': 'UTF-8',
         }
-        if not nosign and self.auth is not None and self.auth.can_sign_headers():
-            headers = self.auth.signed_headers(headers)
+        if not nosign and self.auth is not None and self.auth.can_sign_headers(self.auth):
+            headers = self.auth.signed_headers(self.auth, headers)
         
         # perform the request but intercept 401 responses, raising our own Exception
         res = self.session.delete(url)

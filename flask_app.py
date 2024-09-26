@@ -1,18 +1,31 @@
 # -*- coding: utf-8 -*-
 
+from fhirclient.auth import FHIROAuth2Auth
 import logging
 from fhirclient import client
 from fhirclient.models.medication import Medication
 from fhirclient.models.medicationrequest import MedicationRequest
+from fhirclient import client
+from fhirclient import server
+from fhirclient import auth
+import json
 
 from flask import Flask, request, redirect, session
 
+import requests
+
+AUTH_SERVER = 'http://localhost:8081'
+
 # app setup
-smart_defaults = {
-    'app_id': 'my_web_app',
-    'api_base': 'http://localhost:4004/hapi-fhir-jpaserver/fhir/',
-    'redirect_uri': 'http://localhost:8000/fhir-app/',
-}
+settings = {
+        'app_id': 'my_web_app',
+        'api_base': 'http://localhost:8080/baseDstu3/',
+    }
+
+smart = client.FHIRClient(settings=settings)
+
+# OAuth object
+fhirauth = auth.FHIROAuth2Auth
 
 app = Flask(__name__)
 
@@ -72,27 +85,37 @@ def _get_med_name(prescription, client=None):
 def index():
     """ The app's main page.
     """
-    smart = _get_smart()
-    body = "<h1>Hello</h1>"
+ 
+    import fhirclient.models.patient as p
+    import fhirclient.models.humanname as hn
     
-    if smart.ready and smart.patient is not None:       # "ready" may be true but the access token may have expired, making smart.patient = None
-        name = smart.human_name(smart.patient.name[0] if smart.patient.name and len(smart.patient.name) > 0 else 'Unknown')
-        
-        # generate simple body text
-        body += "<p>You are authorized and ready to make API requests for <em>{0}</em>.</p>".format(name)
-        pres = _get_prescriptions(smart)
-        if pres is not None:
-            body += "<p>{0} prescriptions: <ul><li>{1}</li></ul></p>".format("His" if 'male' == smart.patient.gender else "Her", '</li><li>'.join([_get_med_name(p,smart) for p in pres]))
-        else:
-            body += "<p>(There are no prescriptions for {0})</p>".format("him" if 'male' == smart.patient.gender else "her")
-        body += """<p><a href="/logout">Change patient</a></p>"""
-    else:
-        auth_url = smart.authorize_url
-        if auth_url is not None:
-            body += """<p>Please <a href="{0}">authorize</a>.</p>""".format(auth_url)
-        else:
-            body += """<p>Running against a no-auth server, nothing to demo here. """
-        body += """<p><a href="/reset" style="font-size:small;">Reset</a></p>"""
+    # patient = p.Patient()
+    
+    # name = hn.HumanName()
+    # name.given = ['Kevin']
+    # name.family = 'Lee'
+    # patient.name = [name]
+    
+    # p.Patient.create(patient, smart.server)
+    
+    # body = f"<p>{p.Patient.create(patient, smart.server)}</p>"
+    # return body
+
+    search = p.Patient.where(struct={'_id': '1'})
+    print("Searched: ")
+    print(search)
+    patients = search.perform_resources(smart.server)
+    print("patients : ")
+    print(patients)
+    for patient in patients:
+        patient.as_json()
+        print(patient.as_json())
+    print(patient)
+    # '1963-06-12'
+    print(smart.human_name(patient.name[0]))
+    # 'Christy Ebert'
+
+    body = f"<p>{smart.human_name(patient.name[0])}</p>"
     return body
 
 
@@ -107,6 +130,38 @@ def callback():
         return """<h1>Authorization Error</h1><p>{0}</p><p><a href="/">Start over</a></p>""".format(e)
     return redirect('/')
 
+
+@app.route('/login', methods=["POST"])
+def login():
+    req_data = request.get_json()
+    header = {
+        "Content-Type": "application/json"
+    }
+    body = {
+        "username": req_data["username"],
+        "password": req_data["password"]
+    }
+    url = AUTH_SERVER + '/login'
+    try:
+        res = json.loads(requests.post(url, data=json.dumps(body), headers=header).text)
+        print("Result to /login API call : " + str(res))
+    except Exception as e:
+        print("Error occured during /login API call : " + str(e))
+        return {
+            "status": 'error',
+            "message": str(e)
+        }
+    
+    try:
+        fhirauth.set_auth_tokens(fhirauth, res["access_token"], res["refresh_token"])
+        smart.server.set_auth(fhirauth)
+    except Exception as e:
+        print("Error occured during setting auth tokens : " + str(e))
+        return {
+            "status": 'error',
+            "message": str(e)
+        }
+    return json.dumps(res)
 
 @app.route('/logout')
 def logout():
